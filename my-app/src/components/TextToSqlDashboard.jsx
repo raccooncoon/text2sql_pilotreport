@@ -406,10 +406,37 @@ export default function TextToSqlDashboard() {
                                     <StatusBadge status="RUNNING" />
                                 </div>
                             </div>
-                            <div className="flex gap-2 items-center">
+                            <div className="flex flex-col items-end gap-2">
+                                {/* Row 1: 업로드 버튼 + 시범서비스 설정 버튼 */}
+                                <div className="flex items-center gap-2">
+                                    {/* [New] CSV Upload Button & Hidden Input */}
+                                    <input
+                                        type="file"
+                                        accept=".csv"
+                                        ref={fileInputRef}
+                                        className="hidden"
+                                        onChange={handleFileUpload}
+                                    />
+                                    <button
+                                        onClick={() => fileInputRef.current.click()}
+                                        className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
+                                        title="CSV 업로드"
+                                    >
+                                        <Download className="w-5 h-5 rotate-180" /> {/* Upload icon (rotated download) */}
+                                    </button>
 
-                                {/* [추가됨] 기간 설정 UI */}
-                                <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 shadow-sm mr-2 hover:border-indigo-300 transition-colors">
+                                    <button
+                                        onClick={handleRefresh}
+                                        className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+                                        title="시범서비스 기간(12.17~12.24)으로 초기화"
+                                    >
+                                        <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                                        시범서비스 기간으로 설정
+                                    </button>
+                                </div>
+
+                                {/* Row 2: 기간 설정 UI (Bottom) */}
+                                <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:border-indigo-300 transition-colors">
                                     <Calendar className="w-4 h-4 text-indigo-600" />
                                     <input
                                         type="date"
@@ -431,30 +458,6 @@ export default function TextToSqlDashboard() {
                                         className="border-none outline-none text-gray-700 p-0 w-[105px] bg-transparent text-sm cursor-pointer"
                                     />
                                 </div>
-
-                                {/* [New] CSV Upload Button & Hidden Input */}
-                                <input
-                                    type="file"
-                                    accept=".csv"
-                                    ref={fileInputRef}
-                                    className="hidden"
-                                    onChange={handleFileUpload}
-                                />
-                                <button
-                                    onClick={() => fileInputRef.current.click()}
-                                    className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
-                                    title="CSV 업로드"
-                                >
-                                    <Download className="w-5 h-5 rotate-180" /> {/* Upload icon (rotated download) */}
-                                </button>
-
-                                <button
-                                    onClick={handleRefresh}
-                                    className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
-                                    title="새로고침"
-                                >
-                                    <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin text-indigo-600' : ''}`} />
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -645,8 +648,10 @@ export default function TextToSqlDashboard() {
                                                         <div className="font-medium text-gray-900 text-xs">{log.user}</div>
                                                         <div className="text-gray-400 text-[10px] font-mono">{log.chat}</div>
                                                     </td>
-                                                    <td className="px-5 py-3 text-gray-900 truncate max-w-[200px]" title={log.query}>
-                                                        {log.query}
+                                                    <td className="px-5 py-3 text-gray-900 max-w-[200px]" title={log.query}>
+                                                        <div className="truncate w-full">
+                                                            {log.query}
+                                                        </div>
                                                     </td>
                                                     <td className="px-5 py-3">
                                                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700">
