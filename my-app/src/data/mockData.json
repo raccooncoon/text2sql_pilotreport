@@ -1,0 +1,216 @@
+{
+    "KPI_METRICS": [
+        {
+            "title": "신규 사용자 계정",
+            "value": "128",
+            "unit": "명",
+            "subtext": "선택 기간 내 가입",
+            "trend": "up",
+            "icon": "User"
+        },
+        {
+            "title": "생성된 채팅 세션",
+            "value": "452",
+            "unit": "건",
+            "subtext": "기간 내 활성 세션",
+            "trend": "neutral",
+            "icon": "MessageSquare"
+        },
+        {
+            "title": "총 처리 질문 수",
+            "value": "1,500",
+            "unit": "건",
+            "subtext": "기간 내 총 트래픽",
+            "trend": "up",
+            "icon": "HelpCircle"
+        },
+        {
+            "title": "사용자 평균 평점",
+            "value": "4.2",
+            "unit": "/ 5.0",
+            "subtext": "기간 내 피드백 기준",
+            "trend": "up",
+            "icon": "Star"
+        }
+    ],
+    "DAILY_STATS_DATA": [
+        {
+            "date": "12.17",
+            "request": 120,
+            "successRate": 68
+        },
+        {
+            "date": "12.18",
+            "request": 145,
+            "successRate": 72
+        },
+        {
+            "date": "12.19",
+            "request": 180,
+            "successRate": 65
+        },
+        {
+            "date": "12.20",
+            "request": 210,
+            "successRate": 75
+        },
+        {
+            "date": "12.21",
+            "request": 90,
+            "successRate": 82
+        },
+        {
+            "date": "12.22",
+            "request": 95,
+            "successRate": 80
+        },
+        {
+            "date": "12.23",
+            "request": 280,
+            "successRate": 74
+        },
+        {
+            "date": "12.24",
+            "request": 380,
+            "successRate": 76
+        }
+    ],
+    "PIPELINE_FUNNEL_DATA": [
+        {
+            "stage": "1. 모델 상태 확인 (진입)",
+            "count": 1500,
+            "dropOff": 20,
+            "fill": "#4f46e5"
+        },
+        {
+            "stage": "2. 질문 분석 & 의도 파악",
+            "count": 1480,
+            "dropOff": 80,
+            "fill": "#6366f1"
+        },
+        {
+            "stage": "3. 메타 정보(RAG) 조회",
+            "count": 1400,
+            "dropOff": 200,
+            "fill": "#818cf8"
+        },
+        {
+            "stage": "4. SQL 생성 및 검증",
+            "count": 1200,
+            "dropOff": 150,
+            "fill": "#a5b4fc"
+        },
+        {
+            "stage": "5. 결과 요약 (완료)",
+            "count": 1050,
+            "dropOff": 0,
+            "fill": "#c7d2fe"
+        }
+    ],
+    "ERROR_DISTRIBUTION": [
+        {
+            "name": "메타 조회 실패",
+            "value": 35,
+            "color": "#f59e0b"
+        },
+        {
+            "name": "SQL 검증/문법 오류",
+            "value": 25,
+            "color": "#ef4444"
+        },
+        {
+            "name": "환각(없는 컬럼)",
+            "value": 20,
+            "color": "#8b5cf6"
+        },
+        {
+            "name": "의도 파악 불가",
+            "value": 15,
+            "color": "#64748b"
+        },
+        {
+            "name": "모델 연결 실패",
+            "value": 5,
+            "color": "#10b981"
+        }
+    ],
+    "RECENT_LOGS": [
+        {
+            "id": "Q-1001",
+            "user": "user_01",
+            "chat": "C-01",
+            "query": "지난달 서울 매출 보여줘",
+            "stage": "5. 결과 요약",
+            "latency": "1.8s",
+            "status": "SUCCESS",
+            "feedback": 5,
+            "time": "14:30:01"
+        },
+        {
+            "id": "Q-1002",
+            "user": "admin",
+            "chat": "C-02",
+            "query": "직원 테이블 삭제해줘",
+            "stage": "4. SQL 검증",
+            "latency": "0.5s",
+            "status": "BLOCKED",
+            "feedback": null,
+            "time": "14:28:45"
+        },
+        {
+            "id": "Q-1003",
+            "user": "user_02",
+            "chat": "C-03",
+            "query": "가장 많이 팔린거 뭐지?",
+            "stage": "3. 메타 조회",
+            "latency": "0.8s",
+            "status": "FAIL",
+            "feedback": 1,
+            "time": "14:25:12"
+        },
+        {
+            "id": "Q-1004",
+            "user": "user_01",
+            "chat": "C-01",
+            "query": "Q3 영업 이익률 계산해",
+            "stage": "4. SQL 생성",
+            "latency": "2.1s",
+            "status": "ERROR",
+            "feedback": null,
+            "time": "14:22:30"
+        },
+        {
+            "id": "Q-1005",
+            "user": "manager",
+            "chat": "C-05",
+            "query": "부산 지점 목록",
+            "stage": "5. 결과 요약",
+            "latency": "1.2s",
+            "status": "SUCCESS",
+            "feedback": 4,
+            "time": "14:20:11"
+        },
+        {
+            "id": "Q-1006",
+            "user": "user_03",
+            "chat": "C-06",
+            "query": "작년 전체 매출",
+            "stage": "5. 결과 요약",
+            "latency": "1.5s",
+            "status": "SUCCESS",
+            "feedback": 3,
+            "time": "14:15:22"
+        },
+        {
+            "id": "Q-1007",
+            "user": "user_02",
+            "chat": "C-03",
+            "query": "재고 부족 상품",
+            "stage": "5. 결과 요약",
+            "latency": "1.1s",
+            "status": "SUCCESS",
+            "feedback": 5,
+            "time": "14:10:05"
+        }
+    ]
+}
