@@ -25,6 +25,27 @@
             "icon": "HelpCircle"
         },
         {
+            "title": "모델별 사용 비율",
+            "breakdown": [
+                {
+                    "label": "GPT-4",
+                    "value": "45%",
+                    "count": "675건"
+                },
+                {
+                    "label": "Claude 3.5",
+                    "value": "35%",
+                    "count": "525건"
+                },
+                {
+                    "label": "Llama 3",
+                    "value": "20%",
+                    "count": "300건"
+                }
+            ],
+            "icon": "Cpu"
+        },
+        {
             "title": "사용자 평균 평점",
             "value": "4.2",
             "unit": "/ 5.0",
@@ -140,10 +161,12 @@
             "user": "user_01",
             "chat": "C-01",
             "query": "지난달 서울 매출 보여줘",
+            "model": "GPT-4",
             "stage": "5. 결과 요약",
             "latency": "1.8s",
             "status": "SUCCESS",
             "feedback": 5,
+            "date": "2025-12-24",
             "time": "14:30:01"
         },
         {
@@ -151,10 +174,12 @@
             "user": "admin",
             "chat": "C-02",
             "query": "직원 테이블 삭제해줘",
+            "model": "Claude 3.5",
             "stage": "4. SQL 검증",
             "latency": "0.5s",
             "status": "BLOCKED",
             "feedback": null,
+            "date": "2025-12-24",
             "time": "14:28:45"
         },
         {
@@ -162,10 +187,12 @@
             "user": "user_02",
             "chat": "C-03",
             "query": "가장 많이 팔린거 뭐지?",
+            "model": "Llama 3",
             "stage": "3. 메타 조회",
             "latency": "0.8s",
             "status": "FAIL",
             "feedback": 1,
+            "date": "2025-12-23",
             "time": "14:25:12"
         },
         {
@@ -173,10 +200,12 @@
             "user": "user_01",
             "chat": "C-01",
             "query": "Q3 영업 이익률 계산해",
+            "model": "GPT-4",
             "stage": "4. SQL 생성",
             "latency": "2.1s",
             "status": "ERROR",
             "feedback": null,
+            "date": "2025-12-23",
             "time": "14:22:30"
         },
         {
@@ -184,10 +213,12 @@
             "user": "manager",
             "chat": "C-05",
             "query": "부산 지점 목록",
+            "model": "Claude 3.5",
             "stage": "5. 결과 요약",
             "latency": "1.2s",
             "status": "SUCCESS",
             "feedback": 4,
+            "date": "2025-12-24",
             "time": "14:20:11"
         },
         {
@@ -195,10 +226,12 @@
             "user": "user_03",
             "chat": "C-06",
             "query": "작년 전체 매출",
+            "model": "GPT-4",
             "stage": "5. 결과 요약",
             "latency": "1.5s",
             "status": "SUCCESS",
             "feedback": 3,
+            "date": "2025-12-22",
             "time": "14:15:22"
         },
         {
@@ -206,10 +239,12 @@
             "user": "user_02",
             "chat": "C-03",
             "query": "재고 부족 상품",
+            "model": "Llama 3",
             "stage": "5. 결과 요약",
             "latency": "1.1s",
             "status": "SUCCESS",
             "feedback": 5,
+            "date": "2025-12-22",
             "time": "14:10:05"
         }
     ]

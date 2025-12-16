@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
     PieChart, Pie, Cell, AreaChart, Area, ComposedChart, Line
@@ -7,7 +7,7 @@ import {
     Activity, Database, AlertTriangle, Clock,
     ArrowRight, List, Settings,
     ChevronRight, RefreshCw, Download, MoreHorizontal,
-    Home, Box, BarChart2, User, MessageSquare, HelpCircle, Star, Calendar, TrendingUp, Filter
+    Home, Box, BarChart2, User, MessageSquare, HelpCircle, Star, Calendar, TrendingUp, Filter, Cpu
 } from 'lucide-react';
 import mockData from '../data/mockData.json';
 
@@ -16,7 +16,8 @@ const iconMap = {
     User: User,
     MessageSquare: MessageSquare,
     HelpCircle: HelpCircle,
-    Star: Star
+    Star: Star,
+    Cpu: Cpu
 };
 
 // --- Reusable UI Components ---
@@ -54,7 +55,7 @@ const StarRating = ({ rating }) => {
     );
 };
 
-const MetricCard = ({ title, value, unit, subtext, trend, icon }) => {
+const MetricCard = ({ title, value, unit, subtext, trend, icon, breakdown }) => {
     const Icon = iconMap[icon] || HelpCircle;
     return (
         <div className="bg-white p-5 rounded-lg border border-gray-200 hover:border-indigo-200 transition-all shadow-sm">
@@ -64,11 +65,27 @@ const MetricCard = ({ title, value, unit, subtext, trend, icon }) => {
                     <Icon className={`w-4 h-4 ${trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-500' : 'text-gray-500'}`} />
                 </div>
             </div>
-            <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-2xl font-bold text-gray-900 font-mono">{value}</span>
-                <span className="text-sm text-gray-500 font-medium">{unit}</span>
-            </div>
-            <div className="text-xs text-gray-400">{subtext}</div>
+            {breakdown ? (
+                <div className="space-y-2 mt-2">
+                    {breakdown.map((item, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600">{item.label}</span>
+                            <div className="text-right">
+                                <span className="font-bold text-gray-900">{item.value}</span>
+                                {item.count && <span className="text-gray-400 text-xs ml-1">({item.count})</span>}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <>
+                    <div className="flex items-baseline gap-1 mb-1">
+                        <span className="text-2xl font-bold text-gray-900 font-mono">{value}</span>
+                        <span className="text-sm text-gray-500 font-medium">{unit}</span>
+                    </div>
+                    <div className="text-xs text-gray-400">{subtext}</div>
+                </>
+            )}
         </div>
     );
 };
@@ -96,6 +113,10 @@ export default function TextToSqlDashboard() {
     });
     // [New] 평점 필터 상태 관리 ('ALL', '5', '4', '1-3', 'NULL')
     const [filterRating, setFilterRating] = useState('ALL');
+    // [New] 인피니티 스크롤을 위한 표시 개수 상태 관리
+    const [displayCount, setDisplayCount] = useState(10);
+    // [New] 인피니티 스크롤 관측 대상 Ref
+    const observerTarget = useRef(null);
 
     const { KPI_METRICS, DAILY_STATS_DATA, PIPELINE_FUNNEL_DATA, ERROR_DISTRIBUTION, RECENT_LOGS } = mockData;
 
@@ -103,8 +124,13 @@ export default function TextToSqlDashboard() {
         setMounted(true);
     }, []);
 
-    // 평점 필터링 로직
+    // 평점 및 날짜 필터링 로직
     const filteredLogs = RECENT_LOGS.filter(log => {
+        // 날짜 필터링 (Global Date Range 사용)
+        if (dateRange.start && log.date < dateRange.start) return false;
+        if (dateRange.end && log.date > dateRange.end) return false;
+
+        // 평점 필터링
         if (filterRating === 'ALL') return true;
         if (filterRating === 'NULL') return log.feedback === null;
         if (filterRating === '5') return log.feedback === 5;
@@ -112,6 +138,35 @@ export default function TextToSqlDashboard() {
         if (filterRating === '1-3') return log.feedback !== null && log.feedback <= 3;
         return true;
     });
+
+    // 날짜나 필터가 변경되면 displayCount 초기화
+    useEffect(() => {
+        setDisplayCount(10);
+    }, [dateRange, filterRating]);
+
+    // 인터섹션 옵저버 콜백 (스크롤이 바닥에 닿으면 더 로드)
+    const handleObserver = useCallback((entries) => {
+        const target = entries[0];
+        if (target.isIntersecting) {
+            setDisplayCount((prev) => prev + 10);
+        }
+    }, []);
+
+    useEffect(() => {
+        const option = {
+            root: null,
+            rootMargin: "20px",
+            threshold: 0
+        };
+        const observer = new IntersectionObserver(handleObserver, option);
+        if (observerTarget.current) observer.observe(observerTarget.current);
+
+        return () => {
+            if (observerTarget.current) observer.unobserve(observerTarget.current);
+        }
+    }, [handleObserver, filteredLogs]); // filteredLogs가 바뀌면 타겟 위치가 바뀔 수 있으므로 의존성 추가 고려 (실제로는 displayCount 변경으로 리렌더링)
+
+    const visibleLogs = filteredLogs.slice(0, displayCount);
 
     if (!mounted) return null;
 
@@ -168,7 +223,7 @@ export default function TextToSqlDashboard() {
                 <div className="p-8 space-y-6">
 
                     {/* 섹션 1: 주요 KPI (제공 데이터 기반) */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                         {KPI_METRICS.map((kpi, idx) => (
                             <MetricCard key={idx} {...kpi} />
                         ))}
@@ -289,7 +344,7 @@ export default function TextToSqlDashboard() {
                         <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                             <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2">
                                 <List className="w-4 h-4 text-gray-500" />
-                                실시간 질문 처리 및 사용자 평점 로그
+                                일별 질문 처리 및 사용자 평점 로그
                             </h3>
 
                             {/* [New] 평점 필터 컨트롤 */}
@@ -308,49 +363,61 @@ export default function TextToSqlDashboard() {
                                 </select>
                             </div>
                         </div>
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                             <table className="w-full text-sm text-left">
                                 <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
                                     <tr>
+                                        <th className="px-5 py-3 font-semibold">날짜</th>
                                         <th className="px-5 py-3 font-semibold">시간</th>
                                         <th className="px-5 py-3 font-semibold">사용자 / 채팅ID</th>
                                         <th className="px-5 py-3 font-semibold">질문 내용</th>
-                                        <th className="px-5 py-3 font-semibold">현재 단계</th>
+                                        <th className="px-5 py-3 font-semibold">모델</th>
+                                        <th className="px-5 py-3 font-semibold">최종 단계</th>
                                         <th className="px-5 py-3 font-semibold">상태</th>
                                         <th className="px-5 py-3 font-semibold text-center">평점 (5점)</th>
-                                        <th className="px-5 py-3 font-semibold text-right">상세</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {filteredLogs.length > 0 ? (
-                                        filteredLogs.map((log) => (
-                                            <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
-                                                <td className="px-5 py-3 text-gray-500 text-xs font-mono">{log.time}</td>
-                                                <td className="px-5 py-3">
-                                                    <div className="font-medium text-gray-900 text-xs">{log.user}</div>
-                                                    <div className="text-gray-400 text-[10px] font-mono">{log.chat}</div>
-                                                </td>
-                                                <td className="px-5 py-3 text-gray-900 truncate max-w-[200px]" title={log.query}>
-                                                    {log.query}
-                                                </td>
-                                                <td className="px-5 py-3 text-gray-600 text-xs">{log.stage}</td>
-                                                <td className="px-5 py-3">
-                                                    <StatusBadge status={log.status} />
-                                                </td>
-                                                <td className="px-5 py-3 text-center">
-                                                    <StarRating rating={log.feedback} />
-                                                </td>
-                                                <td className="px-5 py-3 text-right">
-                                                    <button className="text-gray-400 hover:text-gray-600 transition-colors">
-                                                        <MoreHorizontal className="w-4 h-4" />
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
+                                    {visibleLogs.length > 0 ? (
+                                        <>
+                                            {visibleLogs.map((log) => (
+                                                <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
+                                                    <td className="px-5 py-3 text-gray-500 text-xs font-mono">{log.date.replace(/-/g, '. ')}</td>
+                                                    <td className="px-5 py-3 text-gray-400 text-xs font-mono">{log.time}</td>
+                                                    <td className="px-5 py-3">
+                                                        <div className="font-medium text-gray-900 text-xs">{log.user}</div>
+                                                        <div className="text-gray-400 text-[10px] font-mono">{log.chat}</div>
+                                                    </td>
+                                                    <td className="px-5 py-3 text-gray-900 truncate max-w-[200px]" title={log.query}>
+                                                        {log.query}
+                                                    </td>
+                                                    <td className="px-5 py-3">
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700">
+                                                            {log.model}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-5 py-3 text-gray-600 text-xs">{log.stage}</td>
+                                                    <td className="px-5 py-3">
+                                                        <StatusBadge status={log.status} />
+                                                    </td>
+                                                    <td className="px-5 py-3 text-center">
+                                                        <StarRating rating={log.feedback} />
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {/* 인피니티 스크롤 트리거 요소 */}
+                                            {visibleLogs.length < filteredLogs.length && (
+                                                <tr ref={observerTarget}>
+                                                    <td colSpan="7" className="py-4 text-center text-xs text-gray-400">
+                                                        Loading more...
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </>
                                     ) : (
                                         <tr>
-                                            <td colSpan="7" className="px-5 py-8 text-center text-gray-500 text-xs">
-                                                선택한 평점 조건에 해당하는 로그가 없습니다.
+                                            <td colSpan="8" className="px-5 py-8 text-center text-gray-500 text-xs">
+                                                선택한 기간 또는 평점 조건에 해당하는 로그가 없습니다.
                                             </td>
                                         </tr>
                                     )}
