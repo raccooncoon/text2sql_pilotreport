@@ -123,6 +123,23 @@ export default function TextToSqlDashboard() {
     const [logs, setLogs] = useState(mockData.RECENT_LOGS);
     // [New] Refresh Loading State
     const [isRefreshing, setIsRefreshing] = useState(false);
+    // [New] Tooltip State
+    const [tooltip, setTooltip] = useState({ visible: false, x: 0, y: 0, content: '' });
+
+    const handleMouseEnter = (e, content) => {
+        const rect = e.target.getBoundingClientRect();
+        setTooltip({
+            visible: true,
+            x: rect.left + window.scrollX, // Just rect.left for fixed
+            y: rect.bottom + window.scrollY, // Just rect.bottom for fixed
+            rect: rect, // Store rect to compute precise fixed position
+            content: content
+        });
+    };
+
+    const handleMouseLeave = () => {
+        setTooltip(prev => ({ ...prev, visible: false }));
+    };
 
     const handleRefresh = () => {
         setIsRefreshing(true);
@@ -648,8 +665,12 @@ export default function TextToSqlDashboard() {
                                                         <div className="font-medium text-gray-900 text-xs">{log.user}</div>
                                                         <div className="text-gray-400 text-[10px] font-mono">{log.chat}</div>
                                                     </td>
-                                                    <td className="px-5 py-3 text-gray-900 max-w-[200px]" title={log.query}>
-                                                        <div className="truncate w-full">
+                                                    <td className="px-5 py-3 text-gray-900 max-w-[200px] relative">
+                                                        <div
+                                                            className="truncate w-full cursor-help"
+                                                            onMouseEnter={(e) => handleMouseEnter(e, log.query)}
+                                                            onMouseLeave={handleMouseLeave}
+                                                        >
                                                             {log.query}
                                                         </div>
                                                     </td>
@@ -698,6 +719,18 @@ export default function TextToSqlDashboard() {
 
                 </div>
             </main>
+            {/* Global Tooltip Portal (Rendered as fixed element) */}
+            {tooltip.visible && (
+                <div
+                    className="fixed z-50 bg-gray-900 text-white text-xs rounded px-3 py-2 shadow-xl max-w-sm whitespace-normal break-words pointer-events-none"
+                    style={{
+                        top: tooltip.rect.bottom + 5,
+                        left: Math.max(10, Math.min(window.innerWidth - 300, tooltip.rect.left)) // Prevent going off-screen right
+                    }}
+                >
+                    {tooltip.content}
+                </div>
+            )}
         </div>
     );
 }
