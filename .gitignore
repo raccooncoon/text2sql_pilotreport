@@ -1,0 +1,11 @@
+# Database Configuration
+scripts/db_config.env
+
+# Node modules
+node_modules/
+
+# Mac OS
+.DS_Store
+
+# Brain
+.gemini/
