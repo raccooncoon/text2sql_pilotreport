@@ -521,17 +521,15 @@ export default function TextToSqlDashboard() {
                             <div className="flex flex-col items-end gap-2">
                                 {/* Row 1: Buttons centered or right aligned as group */}
                                 <div className="flex items-center gap-2">
-                                    {import.meta.env.DEV && (
-                                        <button
-                                            onClick={setAllPeriod}
-                                            disabled={isRefreshing}
-                                            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg transition-colors ${isRefreshing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                            title="전체 기간 보기 (로컬 전용)"
-                                        >
-                                            <List className="w-4 h-4" />
-                                            전체
-                                        </button>
-                                    )}
+                                    <button
+                                        onClick={setAllPeriod}
+                                        disabled={isRefreshing}
+                                        className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg transition-colors ${isRefreshing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        title="전체 기간 보기"
+                                    >
+                                        <List className="w-4 h-4" />
+                                        전체
+                                    </button>
 
                                     <button
                                         onClick={setPilotPeriod}
