@@ -139,8 +139,9 @@ const StatusBadge = ({ status }) => {
         FAIL: 'bg-red-50 text-red-700 border-red-200',
         ERROR: 'bg-red-50 text-red-700 border-red-200',
         BLOCKED: 'bg-orange-50 text-orange-700 border-orange-200',
+        PENDING: 'bg-gray-50 text-gray-700 border-gray-200',
     };
-    const labelMap = { SUCCESS: '성공', RUNNING: '운영 중', FAIL: '실패', ERROR: '에러', BLOCKED: '차단됨' };
+    const labelMap = { SUCCESS: '성공', RUNNING: '운영 중', FAIL: '실패', ERROR: '에러', BLOCKED: '차단됨', PENDING: '대기 중' };
 
     return (
         <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${styles[status] || 'bg-gray-100 text-gray-600'}`}>
