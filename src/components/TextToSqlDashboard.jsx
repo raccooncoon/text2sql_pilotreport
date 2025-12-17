@@ -9,20 +9,11 @@ import {
     ChevronRight, RefreshCw, Download, MoreHorizontal, ChevronDown, ChevronUp,
     Home, Box, BarChart2, User, MessageSquare, HelpCircle, Star, Calendar, TrendingUp, Filter, Cpu
 } from 'lucide-react';
-import initialCsvDataFallback from '../data/mockdata.csv?raw';
 
 import logo from '../assets/logo.png';
+import { supabase } from '../supabaseClient';
 
-// [Logic] Load Latest CSV Data
-// 1. Load all export_data_*.csv files dynamically
-const exportFiles = import.meta.glob('../data/export_data_*.csv', { query: '?raw', import: 'default', eager: true });
 
-// 2. Find the latest file by sorting filenames (timestamps) descending
-const fileKeys = Object.keys(exportFiles).sort().reverse();
-
-// 3. Select latest content or fallback
-const initialCsvData = fileKeys.length > 0 ? exportFiles[fileKeys[0]] : initialCsvDataFallback;
-const currentFileName = fileKeys.length > 0 ? fileKeys[0].split('/').pop() : 'mockdata.csv';
 
 // Icon Mapping
 const iconMap = {
@@ -35,115 +26,8 @@ const iconMap = {
     RefreshCw: RefreshCw
 };
 
-// --- Helper Functions ---
-const parseCSV = (str) => {
-    const arr = [];
-    let quote = false;  // 'true' means we're inside a quoted field
-    let col = 0;
-    let row = 0;
-
-    // Initialize first row and col
-    arr[0] = [];
-    arr[0][0] = "";
-
-    for (let c = 0; c < str.length; c++) {
-        let cc = str[c];      // Current character
-        let nc = str[c + 1];    // Next character
-
-        arr[row] = arr[row] || [];
-        arr[row][col] = arr[row][col] || "";
-
-        if (cc == '"' && quote && nc == '"') {
-            // Double quote inside quoted field -> escape it (add one quote)
-            arr[row][col] += cc;
-            ++c; // Skip next quote
-            continue;
-        }
-
-        if (cc == '"') {
-            quote = !quote;
-            continue;
-        }
-
-        if (cc == ',' && !quote) {
-            ++col;
-            continue;
-        }
-
-        if (cc == '\r' && nc == '\n' && !quote) {
-            ++row;
-            col = 0;
-            ++c; // Skip newline
-            continue;
-        }
-
-        if (cc == '\n' && !quote) {
-            ++row;
-            col = 0;
-            continue;
-        }
-        if (cc == '\r' && !quote) {
-            ++row;
-            col = 0;
-            continue;
-        }
-
-        arr[row][col] += cc;
-    }
-    return arr;
-};
-
-const processCsvData = (text) => {
-    const parsedRows = parseCSV(text);
-    if (parsedRows.length === 0) return [];
-
-    // Handle Headers & Normalization
-    const rawHeaders = parsedRows[0].map(h => h.trim());
-
-    // Schema Mapping (Normalize case-insensitive to expected keys)
-    const schemaMap = {
-        'id': 'id',
-        'user': 'user',
-        'chat': 'chat',
-        'query': 'query',
-        'model': 'model',
-        'stage': 'stage',
-        'status': 'status',
-        'feedbackscore': 'feedbackScore',
-        'feedback': 'feedbackScore', // Alias old feedback
-        'date': 'date',
-        'time': 'time',
-        'retrycount': 'retryCount',
-        'feedbackcomment': 'feedbackComment'
-    };
-
-    const headers = rawHeaders.map(h => schemaMap[h.toLowerCase()] || h);
-
-    const newLogs = [];
-    for (let i = 1; i < parsedRows.length; i++) {
-        const values = parsedRows[i];
-        if (values.length < headers.length) continue; // Skip empty/malformed
-
-        const entry = {};
-        headers.forEach((h, index) => {
-            let val = values[index];
-            if (val) val = val.trim();
-
-            // Type conversion
-            if (h === 'feedbackScore') val = (val === 'null' || val === '') ? null : Number(val);
-            if (h === 'retryCount') val = Number(val);
-
-            entry[h] = val;
-        });
-        // Basic validation: must have id or date
-        if (entry.id || entry.date) {
-            newLogs.push(entry);
-        }
-    }
-    return newLogs;
-};
-
 // --- Reusable UI Components ---
+
 
 const StatusBadge = ({ status }) => {
     const styles = {
@@ -263,15 +147,80 @@ export default function TextToSqlDashboard() {
     const [displayCount, setDisplayCount] = useState(10);
     // [New] 인피니티 스크롤 관측 대상 Ref
     const observerTarget = useRef(null);
-    // [New] File Uplod Ref
-    const fileInputRef = useRef(null);
-    // [New] Logs Data State (Initialized with Latest Export or Mock Data)
-    const [logs, setLogs] = useState(() => {
-        console.log(`Loaded initial data from: ${currentFileName}`);
-        return processCsvData(initialCsvData);
-    });
+    // [New] Logs Data State
+    const [logs, setLogs] = useState([]);
     // [New] Refresh Loading State
     const [isRefreshing, setIsRefreshing] = useState(false);
+
+    // [New] Data Fetching Function with Pagination
+    const fetchLogs = async () => {
+        setIsRefreshing(true);
+        try {
+            let allData = [];
+            let page = 0;
+            const pageSize = 1000;
+            let hasMore = true;
+
+            while (hasMore) {
+                const from = page * pageSize;
+                const to = from + pageSize - 1;
+
+                const { data, error } = await supabase
+                    .from('k_water_t2sql_view')
+                    .select('*')
+                    .range(from, to);
+
+                if (error) throw error;
+
+                if (data) {
+                    allData = [...allData, ...data];
+                    // If we got fewer items than requested, we've reached the end
+                    if (data.length < pageSize) {
+                        hasMore = false;
+                    } else {
+                        page++;
+                    }
+                } else {
+                    hasMore = false;
+                }
+            }
+
+            if (allData.length > 0) {
+                // [Logic] Normalize keys (Supabase returns lowercase for unquoted aliases)
+                const normalizedData = allData.map(item => ({
+                    ...item,
+                    feedbackScore: item.feedbackScore ?? item.feedbackscore ?? null,
+                    feedbackComment: item.feedbackComment ?? item.feedbackcomment ?? item.feedback ?? '',
+                    retryCount: item.retryCount ?? item.retrycount ?? 0,
+                    // Ensure other fields are mapped if needed, though most match (id, user, chat, query, model, stage, status, date, time)
+                }));
+
+                setLogs(normalizedData);
+
+                // Auto date range adjust logic - DISABLED to keep default pilot period
+                /*
+                const validDates = normalizedData
+                    .map(l => l.date)
+                    .filter(d => d && /^\d{4}-\d{2}-\d{2}$/.test(d))
+                    .sort();
+
+                if (validDates.length > 0) {
+                    setDateRange({ start: validDates[0], end: validDates[validDates.length - 1] });
+                }
+                */
+            }
+        } catch (error) {
+            console.error('Error fetching logs:', error);
+            alert(`데이터 불러오기 실패: ${error.message}\n(콘솔을 확인해주세요)`);
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchLogs();
+    }, []);
+
     // [New] Tooltip State
     const [tooltip, setTooltip] = useState({ visible: false, x: 0, y: 0, content: '' });
 
@@ -286,54 +235,38 @@ export default function TextToSqlDashboard() {
         });
     };
 
+
     const handleMouseLeave = () => {
         setTooltip(prev => ({ ...prev, visible: false }));
     };
 
-    const handleRefresh = () => {
-        setIsRefreshing(true);
-        // Simulate data fetch / Reset
-        setTimeout(() => {
-            setDateRange({ start: '2025-12-17', end: '2025-12-24' });
-            setFilterRating('ALL');
-            setDisplayCount(10);
-            // Reset to default mock data on refresh? Or keep uploaded data?
-            // User might expect refresh to reload "original" state or just re-fetch.
-            // Let's keep current logs but reset filters.
-            setIsRefreshing(false);
-        }, 800);
-    };
 
-    // [New] Handle CSV Upload
-    const handleFileUpload = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            const text = evt.target.result;
-            const newLogs = processCsvData(text);
 
-            if (newLogs.length === 0) return;
-
-            setLogs(newLogs);
-            setDisplayCount(10);
-
-            // Auto date range adjust logic
-            if (newLogs.length > 0) {
-                // Filter out invalid dates before sorting
-                const validDates = newLogs
-                    .map(l => l.date)
-                    .filter(d => d && /^\d{4}-\d{2}-\d{2}$/.test(d))
-                    .sort();
-
-                if (validDates.length > 0) {
-                    setDateRange({ start: validDates[0], end: validDates[validDates.length - 1] });
-                }
+    // [New] Set All Period
+    const setAllPeriod = () => {
+        if (logs.length > 0) {
+            const validDates = logs
+                .map(l => l.date)
+                .filter(d => d && /^\d{4}-\d{2}-\d{2}$/.test(d))
+                .sort();
+            if (validDates.length > 0) {
+                setDateRange({ start: validDates[0], end: validDates[validDates.length - 1] });
+                setDisplayCount(10);
             }
-        };
-        reader.readAsText(file);
+        }
     };
+
+    // [New] Set Pilot Service Period
+    const setPilotPeriod = () => {
+        setDateRange({ start: '2025-12-17', end: '2025-12-24' });
+        setDisplayCount(10);
+    };
+
+
+
+
+
 
     // const { RECENT_LOGS } = mockData; // Removed and replaced by state
 
@@ -564,65 +497,36 @@ export default function TextToSqlDashboard() {
                                 </div>
                             </div>
                             <div className="flex flex-col items-end gap-2">
-                                {/* Row 1: 업로드 버튼 + 시범서비스 설정 버튼 */}
+                                {/* Row 1: Buttons centered or right aligned as group */}
                                 <div className="flex items-center gap-2">
-                                    {/* [New] CSV Upload Button & Hidden Input */}
-                                    <input
-                                        type="file"
-                                        accept=".csv"
-                                        ref={fileInputRef}
-                                        style={{ display: 'none' }}
-                                        onChange={handleFileUpload}
-                                        onClick={(e) => e.target.value = null} // Allow selecting same file again
-                                    />
-                                    <button
-                                        onClick={() => {
-                                            console.log('Upload clicked');
-                                            fileInputRef.current?.click();
-                                        }}
-                                        className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
-                                        title="CSV 업로드"
-                                    >
-                                        <Download className="w-5 h-5 rotate-180" /> {/* Upload icon (rotated download) */}
-                                    </button>
-
-                                    <button
-                                        onClick={handleRefresh}
-                                        className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
-                                        title="시범서비스 기간(12.17~12.24)으로 초기화"
-                                    >
-                                        <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                                        시범서비스 기간으로 설정
-                                    </button>
-
-                                    {/* [New] Localhost Exec Trigger Button */}
-                                    {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+                                    {import.meta.env.DEV && (
                                         <button
-                                            onClick={async () => {
-                                                if (isRefreshing) return;
-                                                setIsRefreshing(true);
-                                                try {
-                                                    const res = await fetch('/__run-export');
-                                                    if (res.ok) {
-                                                        window.location.reload();
-                                                    } else {
-                                                        alert('Export script failed.');
-                                                    }
-                                                } catch (e) {
-                                                    console.error(e);
-                                                    alert('Error running script.');
-                                                } finally {
-                                                    setIsRefreshing(false);
-                                                }
-                                            }}
-                                            className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full transition-all shadow-sm active:scale-95"
-                                            title="DB 데이터 갱신 (스크립트 실행)"
+                                            onClick={setAllPeriod}
                                             disabled={isRefreshing}
+                                            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg transition-colors ${isRefreshing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            title="전체 기간 보기 (로컬 전용)"
                                         >
-                                            <Download className={`w-4 h-4 ${isRefreshing ? 'animate-bounce' : ''}`} />
+                                            <List className="w-4 h-4" />
+                                            전체
                                         </button>
                                     )}
+
+                                    <button
+                                        onClick={setPilotPeriod}
+                                        disabled={isRefreshing}
+                                        className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg transition-colors ${isRefreshing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        title="시범 서비스 기간 (12.17 ~ 12.24)으로 설정"
+                                    >
+                                        <Calendar className="w-4 h-4" />
+                                        시범 서비스 기간으로 설정
+                                    </button>
                                 </div>
+
+
+
+
+
+
 
                                 {/* Row 2: 기간 설정 UI (Bottom) */}
                                 <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:border-indigo-300 transition-colors">
