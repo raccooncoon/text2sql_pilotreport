@@ -10,6 +10,7 @@ import {
     Home, Box, BarChart2, User, MessageSquare, HelpCircle, Star, Calendar, TrendingUp, Filter, Cpu
 } from 'lucide-react';
 import mockData from '../data/mockData.json';
+import initialCsvData from '../data/mockdata.csv?raw';
 
 // Icon Mapping
 const iconMap = {
@@ -18,6 +19,114 @@ const iconMap = {
     HelpCircle: HelpCircle,
     Star: Star,
     Cpu: Cpu
+};
+
+// --- Helper Functions ---
+const parseCSV = (str) => {
+    const arr = [];
+    let quote = false;  // 'true' means we're inside a quoted field
+    let col = 0;
+    let row = 0;
+
+    // Initialize first row and col
+    arr[0] = [];
+    arr[0][0] = "";
+
+    for (let c = 0; c < str.length; c++) {
+        let cc = str[c];      // Current character
+        let nc = str[c + 1];    // Next character
+
+        arr[row] = arr[row] || [];
+        arr[row][col] = arr[row][col] || "";
+
+        if (cc == '"' && quote && nc == '"') {
+            // Double quote inside quoted field -> escape it (add one quote)
+            arr[row][col] += cc;
+            ++c; // Skip next quote
+            continue;
+        }
+
+        if (cc == '"') {
+            quote = !quote;
+            continue;
+        }
+
+        if (cc == ',' && !quote) {
+            ++col;
+            continue;
+        }
+
+        if (cc == '\r' && nc == '\n' && !quote) {
+            ++row;
+            col = 0;
+            ++c; // Skip newline
+            continue;
+        }
+
+        if (cc == '\n' && !quote) {
+            ++row;
+            col = 0;
+            continue;
+        }
+        if (cc == '\r' && !quote) {
+            ++row;
+            col = 0;
+            continue;
+        }
+
+        arr[row][col] += cc;
+    }
+    return arr;
+};
+
+const processCsvData = (text) => {
+    const parsedRows = parseCSV(text);
+    if (parsedRows.length === 0) return [];
+
+    // Handle Headers & Normalization
+    const rawHeaders = parsedRows[0].map(h => h.trim());
+
+    // Schema Mapping (Normalize case-insensitive to expected keys)
+    const schemaMap = {
+        'id': 'id',
+        'user': 'user',
+        'chat': 'chat',
+        'query': 'query',
+        'model': 'model',
+        'stage': 'stage',
+        'status': 'status',
+        'feedbackscore': 'feedbackScore',
+        'feedback': 'feedbackScore', // Alias old feedback
+        'date': 'date',
+        'time': 'time',
+        'retrycount': 'retryCount',
+        'feedbackcomment': 'feedbackComment'
+    };
+
+    const headers = rawHeaders.map(h => schemaMap[h.toLowerCase()] || h);
+
+    const newLogs = [];
+    for (let i = 1; i < parsedRows.length; i++) {
+        const values = parsedRows[i];
+        if (values.length < headers.length) continue; // Skip empty/malformed
+
+        const entry = {};
+        headers.forEach((h, index) => {
+            let val = values[index];
+            if (val) val = val.trim();
+
+            // Type conversion
+            if (h === 'feedbackScore') val = (val === 'null' || val === '') ? null : Number(val);
+            if (h === 'retryCount') val = Number(val);
+
+            entry[h] = val;
+        });
+        // Basic validation: must have id or date
+        if (entry.id || entry.date) {
+            newLogs.push(entry);
+        }
+    }
+    return newLogs;
 };
 
 // --- Reusable UI Components ---
@@ -141,8 +250,8 @@ export default function TextToSqlDashboard() {
     const observerTarget = useRef(null);
     // [New] File Uplod Ref
     const fileInputRef = useRef(null);
-    // [New] Logs Data State (Initialized with Mock Data)
-    const [logs, setLogs] = useState(mockData.RECENT_LOGS);
+    // [New] Logs Data State (Initialized with Mock Data CSV)
+    const [logs, setLogs] = useState(() => processCsvData(initialCsvData));
     // [New] Refresh Loading State
     const [isRefreshing, setIsRefreshing] = useState(false);
     // [New] Tooltip State
@@ -185,113 +294,10 @@ export default function TextToSqlDashboard() {
         const reader = new FileReader();
         reader.onload = (evt) => {
             const text = evt.target.result;
+            const newLogs = processCsvData(text);
 
-            // Robust CSV Parser approach
-            const parseCSV = (str) => {
-                const arr = [];
-                let quote = false;  // 'true' means we're inside a quoted field
-                let col = 0;
-                let row = 0;
+            if (newLogs.length === 0) return;
 
-                // Initialize first row and col
-                arr[0] = [];
-                arr[0][0] = "";
-
-                for (let c = 0; c < str.length; c++) {
-                    let cc = str[c];      // Current character
-                    let nc = str[c + 1];    // Next character
-
-                    arr[row] = arr[row] || [];
-                    arr[row][col] = arr[row][col] || "";
-
-                    if (cc == '"' && quote && nc == '"') {
-                        // Double quote inside quoted field -> escape it (add one quote)
-                        arr[row][col] += cc;
-                        ++c; // Skip next quote
-                        continue;
-                    }
-
-                    if (cc == '"') {
-                        quote = !quote;
-                        continue;
-                    }
-
-                    if (cc == ',' && !quote) {
-                        ++col;
-                        continue;
-                    }
-
-                    if (cc == '\r' && nc == '\n' && !quote) {
-                        ++row;
-                        col = 0;
-                        ++c; // Skip newline
-                        continue;
-                    }
-
-                    if (cc == '\n' && !quote) {
-                        ++row;
-                        col = 0;
-                        continue;
-                    }
-                    if (cc == '\r' && !quote) {
-                        ++row;
-                        col = 0;
-                        continue;
-                    }
-
-                    arr[row][col] += cc;
-                }
-                return arr;
-            };
-
-            const parsedRows = parseCSV(text);
-            if (parsedRows.length === 0) return;
-
-            // Handle Headers & Normalization
-            const rawHeaders = parsedRows[0].map(h => h.trim());
-
-            // Schema Mapping (Normalize case-insensitive to expected keys)
-            const schemaMap = {
-                'id': 'id',
-                'user': 'user',
-                'chat': 'chat',
-                'query': 'query',
-                'model': 'model',
-                'stage': 'stage',
-                'status': 'status',
-                'feedbackscore': 'feedbackScore',
-                'feedback': 'feedbackScore', // Alias old feedback
-                'date': 'date',
-                'time': 'time',
-                'retrycount': 'retryCount',
-                'feedbackcomment': 'feedbackComment'
-            };
-
-            const headers = rawHeaders.map(h => schemaMap[h.toLowerCase()] || h);
-
-            const newLogs = [];
-            for (let i = 1; i < parsedRows.length; i++) {
-                const values = parsedRows[i];
-                if (values.length < headers.length) continue; // Skip empty/malformed
-
-                const entry = {};
-                headers.forEach((h, index) => {
-                    let val = values[index];
-                    if (val) val = val.trim();
-
-                    // Type conversion
-                    if (h === 'feedbackScore') val = (val === 'null' || val === '') ? null : Number(val);
-                    if (h === 'retryCount') val = Number(val);
-
-                    entry[h] = val;
-                });
-                // Basic validation: must have id or date
-                if (entry.id || entry.date) {
-                    newLogs.push(entry);
-                }
-            }
-
-            // Deduplication? For now just replace.
             setLogs(newLogs);
             setDisplayCount(10);
 
