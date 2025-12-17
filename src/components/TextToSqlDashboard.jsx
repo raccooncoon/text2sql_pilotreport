@@ -788,11 +788,11 @@ export default function TextToSqlDashboard() {
                                     <tr>
                                         <th className="px-5 py-3 font-semibold">날짜</th>
                                         <th className="px-5 py-3 font-semibold">시간</th>
-                                        <th className="px-5 py-3 font-semibold">사용자 / 채팅ID</th>
+                                        <th className="px-5 py-3 font-semibold min-w-[140px] whitespace-nowrap">사용자/채팅ID</th>
                                         <th className="px-5 py-3 font-semibold">질문 내용</th>
                                         <th className="px-5 py-3 font-semibold">모델</th>
-                                        <th className="px-5 py-3 font-semibold">최종 단계</th>
-                                        <th className="px-5 py-3 font-semibold">상태</th>
+                                        <th className="px-5 py-3 font-semibold min-w-[140px] whitespace-nowrap">최종 단계</th>
+                                        <th className="px-5 py-3 font-semibold text-center">상태</th>
                                         <th className="px-5 py-3 font-semibold text-center">평점</th>
                                         <th className="px-5 py-3 font-semibold">코멘트</th>
                                     </tr>
@@ -822,7 +822,7 @@ export default function TextToSqlDashboard() {
                                                             {log.model}
                                                         </span>
                                                     </td>
-                                                    <td className="px-5 py-3 text-gray-600 text-xs">{log.stage}</td>
+                                                    <td className="px-5 py-3 text-gray-600 text-xs whitespace-nowrap">{log.stage}</td>
                                                     <td className="px-5 py-3 text-gray-600 text-xs text-center align-middle">
                                                         <StatusBadge status={log.status} />
                                                         {log.retryCount > 0 && (
