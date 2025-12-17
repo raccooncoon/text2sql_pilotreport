@@ -6,7 +6,7 @@ import {
 import {
     Activity, Database, AlertTriangle, Clock,
     ArrowRight, List, Settings,
-    ChevronRight, RefreshCw, Download, MoreHorizontal,
+    ChevronRight, RefreshCw, Download, MoreHorizontal, ChevronDown, ChevronUp,
     Home, Box, BarChart2, User, MessageSquare, HelpCircle, Star, Calendar, TrendingUp, Filter, Cpu
 } from 'lucide-react';
 import mockData from '../data/mockData.json';
@@ -57,6 +57,12 @@ const StarRating = ({ rating }) => {
 
 const MetricCard = ({ title, value, unit, subtext, trend, icon, breakdown }) => {
     const Icon = iconMap[icon] || HelpCircle;
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    const visibleItems = (breakdown && !isExpanded && breakdown.length > 3)
+        ? breakdown.slice(0, 3)
+        : breakdown;
+
     return (
         <div className="bg-white p-5 rounded-lg border border-gray-200 hover:border-indigo-200 transition-all shadow-sm">
             <div className="flex justify-between items-start mb-2">
@@ -67,7 +73,7 @@ const MetricCard = ({ title, value, unit, subtext, trend, icon, breakdown }) => 
             </div>
             {breakdown ? (
                 <div className="space-y-2 mt-2">
-                    {breakdown.map((item, idx) => (
+                    {visibleItems.map((item, idx) => (
                         <div key={idx} className="flex justify-between items-center text-sm">
                             <span className="text-gray-600">{item.label}</span>
                             <div className="text-right">
@@ -76,6 +82,22 @@ const MetricCard = ({ title, value, unit, subtext, trend, icon, breakdown }) => 
                             </div>
                         </div>
                     ))}
+                    {breakdown.length > 3 && (
+                        <button
+                            onClick={() => setIsExpanded(!isExpanded)}
+                            className="w-full flex items-center justify-center gap-1 mt-3 pt-2 border-t border-gray-100 text-xs text-indigo-600 hover:text-indigo-800 transition-colors"
+                        >
+                            {isExpanded ? (
+                                <>
+                                    접기 <ChevronUp className="w-3 h-3" />
+                                </>
+                            ) : (
+                                <>
+                                    더 보기 ({breakdown.length - 3}개) <ChevronDown className="w-3 h-3" />
+                                </>
+                            )}
+                        </button>
+                    )}
                 </div>
             ) : (
                 <>
@@ -755,7 +777,7 @@ export default function TextToSqlDashboard() {
                                         <>
                                             {visibleLogs.map((log) => (
                                                 <tr key={log.id} className="hover:bg-gray-50/50 transition-colors align-top">
-                                                    <td className="px-5 py-3 text-gray-500 text-xs font-mono">{log.date.replace(/-/g, '. ')}</td>
+                                                    <td className="px-5 py-3 text-gray-500 text-xs font-mono whitespace-nowrap">{log.date.replace(/-/g, '. ')}</td>
                                                     <td className="px-5 py-3 text-gray-400 text-xs font-mono">{log.time}</td>
                                                     <td className="px-5 py-3">
                                                         <div className="font-medium text-gray-900 text-xs">{log.user}</div>
@@ -776,7 +798,7 @@ export default function TextToSqlDashboard() {
                                                         </span>
                                                     </td>
                                                     <td className="px-5 py-3 text-gray-600 text-xs">{log.stage}</td>
-                                                    <td className="px-5 py-3 text-gray-600 text-xs text-center">
+                                                    <td className="px-5 py-3 text-gray-600 text-xs text-center align-middle">
                                                         <StatusBadge status={log.status} />
                                                         {log.retryCount > 0 && (
                                                             <div className="mt-1 flex items-center justify-center gap-0.5 text-[10px] text-orange-600 font-medium bg-orange-50 px-1.5 py-0.5 rounded-full inline-block">
@@ -788,8 +810,14 @@ export default function TextToSqlDashboard() {
                                                     <td className="px-5 py-3 text-center">
                                                         <StarRating rating={log.feedbackScore} />
                                                     </td>
-                                                    <td className="px-5 py-3 text-xs text-gray-500 max-w-[150px] truncate" title={log.feedbackComment}>
-                                                        {log.feedbackComment || '-'}
+                                                    <td className="px-5 py-3 text-xs text-gray-500 max-w-[150px] relative">
+                                                        <div
+                                                            className="truncate w-full cursor-help"
+                                                            onMouseEnter={(e) => handleMouseEnter(e, log.feedbackComment || '-')}
+                                                            onMouseLeave={handleMouseLeave}
+                                                        >
+                                                            {log.feedbackComment || '-'}
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))}
