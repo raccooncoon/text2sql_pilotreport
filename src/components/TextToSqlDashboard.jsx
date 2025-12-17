@@ -178,7 +178,7 @@ export default function TextToSqlDashboard() {
                 headers.forEach((h, index) => {
                     let val = values[index];
                     // Type conversion if needed
-                    if (h === 'feedback') val = val === 'null' || val === '' ? null : Number(val);
+                    if (h === 'feedbackScore') val = val === 'null' || val === '' ? null : Number(val);
                     if (h === 'retryCount') val = Number(val);
                     entry[h] = val;
                 });
@@ -244,9 +244,9 @@ export default function TextToSqlDashboard() {
         }));
 
         // Avg Rating
-        const ratedLogs = rangeLogs.filter(l => l.feedback !== null);
+        const ratedLogs = rangeLogs.filter(l => l.feedbackScore !== null);
         const avgRating = ratedLogs.length > 0
-            ? (ratedLogs.reduce((sum, l) => sum + l.feedback, 0) / ratedLogs.length).toFixed(1)
+            ? (ratedLogs.reduce((sum, l) => sum + l.feedbackScore, 0) / ratedLogs.length).toFixed(1)
             : '0.0';
 
         return [
@@ -365,10 +365,10 @@ export default function TextToSqlDashboard() {
         // 평점 필터링
 
         if (filterRating === 'ALL') return true;
-        if (filterRating === 'NULL') return log.feedback === null;
-        if (filterRating === '5') return log.feedback === 5;
-        if (filterRating === '4') return log.feedback === 4;
-        if (filterRating === '1-3') return log.feedback !== null && log.feedback <= 3;
+        if (filterRating === 'NULL') return log.feedbackScore === null;
+        if (filterRating === '5') return log.feedbackScore === 5;
+        if (filterRating === '4') return log.feedbackScore === 4;
+        if (filterRating === '1-3') return log.feedbackScore !== null && log.feedbackScore <= 3;
         return true;
     });
 
@@ -429,11 +429,15 @@ export default function TextToSqlDashboard() {
                                         type="file"
                                         accept=".csv"
                                         ref={fileInputRef}
-                                        className="hidden"
+                                        style={{ display: 'none' }}
                                         onChange={handleFileUpload}
+                                        onClick={(e) => e.target.value = null} // Allow selecting same file again
                                     />
                                     <button
-                                        onClick={() => fileInputRef.current.click()}
+                                        onClick={() => {
+                                            console.log('Upload clicked');
+                                            fileInputRef.current?.click();
+                                        }}
                                         className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
                                         title="CSV 업로드"
                                     >
@@ -649,7 +653,8 @@ export default function TextToSqlDashboard() {
                                         <th className="px-5 py-3 font-semibold">모델</th>
                                         <th className="px-5 py-3 font-semibold">최종 단계</th>
                                         <th className="px-5 py-3 font-semibold">상태</th>
-                                        <th className="px-5 py-3 font-semibold text-center">평점 (5점)</th>
+                                        <th className="px-5 py-3 font-semibold text-center">평점</th>
+                                        <th className="px-5 py-3 font-semibold">코멘트</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
@@ -688,7 +693,10 @@ export default function TextToSqlDashboard() {
                                                         )}
                                                     </td>
                                                     <td className="px-5 py-3 text-center">
-                                                        <StarRating rating={log.feedback} />
+                                                        <StarRating rating={log.feedbackScore} />
+                                                    </td>
+                                                    <td className="px-5 py-3 text-xs text-gray-500 max-w-[150px] truncate" title={log.feedbackComment}>
+                                                        {log.feedbackComment || '-'}
                                                     </td>
                                                 </tr>
                                             ))}
