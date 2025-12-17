@@ -30,7 +30,9 @@ const iconMap = {
     MessageSquare: MessageSquare,
     HelpCircle: HelpCircle,
     Star: Star,
-    Cpu: Cpu
+    Cpu: Cpu,
+    Database: Database,
+    RefreshCw: RefreshCw
 };
 
 // --- Helper Functions ---
@@ -391,7 +393,7 @@ export default function TextToSqlDashboard() {
             { title: "활성 세션", value: uniqueSessions.toLocaleString(), unit: "건", subtext: "기간 내 대화 세션", trend: "neutral", icon: "MessageSquare" },
             { title: "총 처리 질문 수", value: totalRequests.toLocaleString(), unit: "건", subtext: "기간 내 총 트래픽", trend: "neutral", icon: "HelpCircle" },
             { title: "모델별 사용 비율", breakdown: modelBreakdown, icon: "Cpu" },
-            { title: "SQL 재시도 통계", breakdown: retryBreakdown, icon: "RefreshCw", value: retryLogs.length.toLocaleString(), unit: "건", subtext: "총 재시도 발생" },
+            { title: "SQL 재시도 통계", breakdown: retryBreakdown, icon: "Database", value: retryLogs.length.toLocaleString(), unit: "건", subtext: "총 재시도 발생" },
             { title: "사용자 평균 평점", value: avgRating, unit: "/ 5.0", subtext: `총 ${ratedLogs.length}건 평가`, trend: "neutral", icon: "Star" }
         ];
     }, [rangeLogs]);
@@ -592,6 +594,34 @@ export default function TextToSqlDashboard() {
                                         <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                                         시범서비스 기간으로 설정
                                     </button>
+
+                                    {/* [New] Localhost Exec Trigger Button */}
+                                    {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+                                        <button
+                                            onClick={async () => {
+                                                if (isRefreshing) return;
+                                                setIsRefreshing(true);
+                                                try {
+                                                    const res = await fetch('/__run-export');
+                                                    if (res.ok) {
+                                                        window.location.reload();
+                                                    } else {
+                                                        alert('Export script failed.');
+                                                    }
+                                                } catch (e) {
+                                                    console.error(e);
+                                                    alert('Error running script.');
+                                                } finally {
+                                                    setIsRefreshing(false);
+                                                }
+                                            }}
+                                            className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full transition-all shadow-sm active:scale-95"
+                                            title="DB 데이터 갱신 (스크립트 실행)"
+                                            disabled={isRefreshing}
+                                        >
+                                            <Download className={`w-4 h-4 ${isRefreshing ? 'animate-bounce' : ''}`} />
+                                        </button>
+                                    )}
                                 </div>
 
                                 {/* Row 2: 기간 설정 UI (Bottom) */}
