@@ -9,9 +9,20 @@ import {
     ChevronRight, RefreshCw, Download, MoreHorizontal, ChevronDown, ChevronUp,
     Home, Box, BarChart2, User, MessageSquare, HelpCircle, Star, Calendar, TrendingUp, Filter, Cpu
 } from 'lucide-react';
-import initialCsvData from '../data/mockdata.csv?raw';
+import initialCsvDataFallback from '../data/mockdata.csv?raw';
 
 import logo from '../assets/logo.png';
+
+// [Logic] Load Latest CSV Data
+// 1. Load all export_data_*.csv files dynamically
+const exportFiles = import.meta.glob('../data/export_data_*.csv', { query: '?raw', import: 'default', eager: true });
+
+// 2. Find the latest file by sorting filenames (timestamps) descending
+const fileKeys = Object.keys(exportFiles).sort().reverse();
+
+// 3. Select latest content or fallback
+const initialCsvData = fileKeys.length > 0 ? exportFiles[fileKeys[0]] : initialCsvDataFallback;
+const currentFileName = fileKeys.length > 0 ? fileKeys[0].split('/').pop() : 'mockdata.csv';
 
 // Icon Mapping
 const iconMap = {
@@ -252,8 +263,11 @@ export default function TextToSqlDashboard() {
     const observerTarget = useRef(null);
     // [New] File Uplod Ref
     const fileInputRef = useRef(null);
-    // [New] Logs Data State (Initialized with Mock Data CSV)
-    const [logs, setLogs] = useState(() => processCsvData(initialCsvData));
+    // [New] Logs Data State (Initialized with Latest Export or Mock Data)
+    const [logs, setLogs] = useState(() => {
+        console.log(`Loaded initial data from: ${currentFileName}`);
+        return processCsvData(initialCsvData);
+    });
     // [New] Refresh Loading State
     const [isRefreshing, setIsRefreshing] = useState(false);
     // [New] Tooltip State
