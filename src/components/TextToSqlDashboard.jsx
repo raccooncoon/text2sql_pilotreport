@@ -9,7 +9,6 @@ import {
     ChevronRight, RefreshCw, Download, MoreHorizontal, ChevronDown, ChevronUp,
     Home, Box, BarChart2, User, MessageSquare, HelpCircle, Star, Calendar, TrendingUp, Filter, Cpu
 } from 'lucide-react';
-import mockData from '../data/mockData.json';
 import initialCsvData from '../data/mockdata.csv?raw';
 
 // Icon Mapping
