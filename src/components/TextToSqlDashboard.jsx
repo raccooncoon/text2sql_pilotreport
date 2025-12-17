@@ -4,7 +4,7 @@ import {
     PieChart, Pie, Cell, AreaChart, Area, ComposedChart, Line
 } from 'recharts';
 import {
-    Activity, Database, AlertTriangle, Clock,
+    Activity, Database, AlertTriangle, AlertCircle, Clock,
     ArrowRight, List, Settings,
     ChevronRight, RefreshCw, Download, MoreHorizontal, ChevronDown, ChevronUp,
     Home, Box, BarChart2, User, MessageSquare, HelpCircle, Star, Calendar, TrendingUp, Filter, Cpu
@@ -456,43 +456,29 @@ export default function TextToSqlDashboard() {
         }));
     }, [rangeLogs]);
 
-    // 4. Error Distribution
-    const ERROR_DISTRIBUTION = useMemo(() => {
-        const errors = rangeLogs.filter(l => ['FAIL', 'ERROR', 'BLOCKED', 'PENDING'].includes(l.status));
-        const errorCounts = errors.reduce((acc, log) => {
-            let reason = "기타 오류";
-
-            if (log.status === 'BLOCKED') {
-                reason = "정책 위반/차단";
-            } else {
-                // User Logic Corrected: Failure AT that stage
-                if (log.stage.includes("1. 모델 상태 확인")) reason = "모델 상태 확인 실패";
-                else if (log.stage.includes("2. 질문 분석")) reason = "질문 분석 실패";
-                else if (log.stage.includes("3. 메타 조회")) reason = "메타 정보 조회 실패";
-                else if (log.stage.includes("4. SQL 검증")) reason = "SQL 생성/검증 실패";
-                else if (log.stage.includes("5. 결과 요약")) reason = "결과 요약 실패";
-            }
-
-            acc[reason] = (acc[reason] || 0) + 1;
+    // 4. Status Distribution (Changed from Error Distribution)
+    const STATUS_DISTRIBUTION = useMemo(() => {
+        const counts = rangeLogs.reduce((acc, log) => {
+            const status = log.status || 'UNKNOWN';
+            acc[status] = (acc[status] || 0) + 1;
             return acc;
         }, {});
 
-        // Color Palette
-        const colorMap = {
-            "정책 위반/차단": "#ef4444", // Red
-            "모델 상태 확인 실패": "#f59e0b", // Amber
-            "질문 분석 실패": "#8b5cf6", // Violet
-            "메타 정보 조회 실패": "#ec4899", // Pink
-            "SQL 생성/검증 실패": "#3b82f6", // Blue
-            "결과 요약 실패": "#10b981", // Emerald
-            "기타 오류": "#64748b" // Slate
+        // Color & Label Map
+        const statusMap = {
+            SUCCESS: { label: '성공', color: '#10b981' }, // Emerald-500
+            FAIL: { label: '실패', color: '#ef4444' }, // Red-500
+            ERROR: { label: '에러', color: '#f59e0b' }, // Amber-500
+            PENDING: { label: '대기 중', color: '#94a3b8' }, // Slate-400
+            BLOCKED: { label: '차단됨', color: '#f97316' }, // Orange-500
+            UNKNOWN: { label: '알 수 없음', color: '#cbd5e1' } // Slate-300
         };
 
-        return Object.entries(errorCounts).map(([name, value]) => ({
-            name,
+        return Object.entries(counts).map(([key, value]) => ({
+            name: statusMap[key]?.label || key,
             value,
-            color: colorMap[name] || "#64748b"
-        })).sort((a, b) => b.value - a.value); // Sort by count descending
+            color: statusMap[key]?.color || '#cbd5e1'
+        })).sort((a, b) => b.value - a.value);
     }, [rangeLogs]);
 
 
@@ -684,14 +670,14 @@ export default function TextToSqlDashboard() {
                         <div className="lg:col-span-1">
                             <ChartCard title={
                                 <>
-                                    <AlertTriangle className="w-4 h-4 text-red-500" />
-                                    실패 원인 상세 분포
+                                    <AlertCircle className="w-4 h-4 text-orange-500" />
+                                    상태별 상세 분포
                                 </>
                             }>
-                                <ResponsiveContainer width="100%" height={250}>
+                                <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie
-                                            data={ERROR_DISTRIBUTION}
+                                            data={STATUS_DISTRIBUTION}
                                             cx="50%"
                                             cy="50%"
                                             innerRadius={60}
@@ -715,7 +701,7 @@ export default function TextToSqlDashboard() {
                                                 );
                                             }}
                                         >
-                                            {ERROR_DISTRIBUTION.map((entry, index) => (
+                                            {STATUS_DISTRIBUTION.map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={entry.color} />
                                             ))}
                                         </Pie>
@@ -792,7 +778,7 @@ export default function TextToSqlDashboard() {
                                         <th className="px-5 py-3 font-semibold">질문 내용</th>
                                         <th className="px-5 py-3 font-semibold">모델</th>
                                         <th className="px-5 py-3 font-semibold min-w-[140px] whitespace-nowrap">최종 단계</th>
-                                        <th className="px-5 py-3 font-semibold text-center">상태</th>
+                                        <th className="px-5 py-3 font-semibold min-w-[100px] whitespace-nowrap text-center">상태</th>
                                         <th className="px-5 py-3 font-semibold text-center">평점</th>
                                         <th className="px-5 py-3 font-semibold">코멘트</th>
                                     </tr>
