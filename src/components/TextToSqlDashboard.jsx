@@ -458,24 +458,41 @@ export default function TextToSqlDashboard() {
 
     // 4. Error Distribution
     const ERROR_DISTRIBUTION = useMemo(() => {
-        const errors = rangeLogs.filter(l => ['FAIL', 'ERROR', 'BLOCKED'].includes(l.status));
+        const errors = rangeLogs.filter(l => ['FAIL', 'ERROR', 'BLOCKED', 'PENDING'].includes(l.status));
         const errorCounts = errors.reduce((acc, log) => {
-            // Use Stage as Error Type proxy
             let reason = "기타 오류";
-            if (log.stage.includes("메타")) reason = "메타 조회 실패";
-            else if (log.stage.includes("SQL")) reason = "SQL 생성/검증 오류";
-            else if (log.stage.includes("분석")) reason = "의도 파악 불가";
-            else if (log.stage.includes("모델")) reason = "모델 연결 실패";
-            else if (log.status === 'BLOCKED') reason = "정책 위반/차단";
+
+            if (log.status === 'BLOCKED') {
+                reason = "정책 위반/차단";
+            } else {
+                // User Logic Corrected: Failure AT that stage
+                if (log.stage.includes("1. 모델 상태 확인")) reason = "모델 상태 확인 실패";
+                else if (log.stage.includes("2. 질문 분석")) reason = "질문 분석 실패";
+                else if (log.stage.includes("3. 메타 조회")) reason = "메타 정보 조회 실패";
+                else if (log.stage.includes("4. SQL 검증")) reason = "SQL 생성/검증 실패";
+                else if (log.stage.includes("5. 결과 요약")) reason = "결과 요약 실패";
+            }
 
             acc[reason] = (acc[reason] || 0) + 1;
             return acc;
         }, {});
 
-        const colors = ["#ef4444", "#f59e0b", "#8b5cf6", "#64748b", "#10b981"];
-        return Object.entries(errorCounts).map(([name, value], idx) => ({
-            name, value, color: colors[idx % colors.length]
-        }));
+        // Color Palette
+        const colorMap = {
+            "정책 위반/차단": "#ef4444", // Red
+            "모델 상태 확인 실패": "#f59e0b", // Amber
+            "질문 분석 실패": "#8b5cf6", // Violet
+            "메타 정보 조회 실패": "#ec4899", // Pink
+            "SQL 생성/검증 실패": "#3b82f6", // Blue
+            "결과 요약 실패": "#10b981", // Emerald
+            "기타 오류": "#64748b" // Slate
+        };
+
+        return Object.entries(errorCounts).map(([name, value]) => ({
+            name,
+            value,
+            color: colorMap[name] || "#64748b"
+        })).sort((a, b) => b.value - a.value); // Sort by count descending
     }, [rangeLogs]);
 
 
