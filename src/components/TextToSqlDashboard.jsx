@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import initialCsvData from '../data/mockdata.csv?raw';
 
+import logo from '../assets/logo.png';
+
 // Icon Mapping
 const iconMap = {
     User: User,
@@ -534,7 +536,7 @@ export default function TextToSqlDashboard() {
                         <div className="flex justify-between items-start">
                             <div>
                                 <nav className="flex items-center text-sm text-gray-500 mb-1">
-                                    <img src="/logo.png" alt="Logo" className="h-6 w-auto" />
+                                    <img src={logo} alt="Logo" className="h-6 w-auto" />
                                 </nav>
                                 <div className="flex items-center gap-3 mt-2">
                                     <h1 className="text-2xl font-bold text-gray-900 tracking-tight">시범 서비스 결과 리포트</h1>
