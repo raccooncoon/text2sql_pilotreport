@@ -37,7 +37,6 @@ const STAGE_MAPPING = {
 
 // --- Reusable UI Components ---
 
-
 const StatusBadge = ({ status }) => {
     const styles = {
         SUCCESS: 'bg-green-50 text-green-700 border-green-200',
@@ -175,7 +174,7 @@ export default function TextToSqlDashboard() {
                 const to = from + pageSize - 1;
 
                 const { data, error } = await supabase
-                    .from('k_water_t2sql_view')
+                    .from(import.meta.env.VITE_SUPABASE_TABLE_NAME)
                     .select('*')
                     .range(from, to);
 
