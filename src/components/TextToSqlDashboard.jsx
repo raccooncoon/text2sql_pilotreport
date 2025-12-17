@@ -26,6 +26,15 @@ const iconMap = {
     RefreshCw: RefreshCw
 };
 
+// Stage Mapping
+const STAGE_MAPPING = {
+    1: '1. 모델 상태 확인',
+    2: '2. 질문 분석',
+    3: '3. 메타 조회',
+    4: '4. SQL 검증',
+    5: '5. 결과 요약'
+};
+
 // --- Reusable UI Components ---
 
 
@@ -376,9 +385,10 @@ export default function TextToSqlDashboard() {
             "4. SQL 생성 및 검증",
             "5. 결과 요약 (완료)"
         ];
-        // Map log stage string to index
-        const getStageIndex = (stageStr) => {
-            const num = parseInt(stageStr.split('.')[0]);
+        // Map log stage string or number to index
+        const getStageIndex = (stageValue) => {
+            if (typeof stageValue === 'number') return stageValue - 1;
+            const num = parseInt(String(stageValue).split('.')[0]);
             return num - 1; // 0-indexed
         };
 
@@ -756,7 +766,9 @@ export default function TextToSqlDashboard() {
                                                             {log.model}
                                                         </span>
                                                     </td>
-                                                    <td className="px-5 py-3 text-gray-600 text-xs whitespace-nowrap">{log.stage}</td>
+                                                    <td className="px-5 py-3 text-gray-600 text-xs whitespace-nowrap">
+                                                        {STAGE_MAPPING[log.stage] || log.stage}
+                                                    </td>
                                                     <td className="px-5 py-3 text-gray-600 text-xs text-center align-middle">
                                                         <StatusBadge status={log.status} />
                                                         {log.retryCount > 0 && (
