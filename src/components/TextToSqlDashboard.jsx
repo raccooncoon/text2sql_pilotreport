@@ -164,7 +164,7 @@ export default function TextToSqlDashboard() {
         reader.onload = (evt) => {
             const text = evt.target.result;
             const lines = text.split('\n');
-            // Headers: id,user,chat,query,model,stage,latency,status,feedback,date,time,retryCount
+            // Headers: id,user,chat,query,model,stage,status,feedback,date,time,retryCount
             // We assume the first line is header.
             const headers = lines[0].split(',').map(h => h.trim());
 
@@ -414,9 +414,7 @@ export default function TextToSqlDashboard() {
                         <div className="flex justify-between items-start">
                             <div>
                                 <nav className="flex items-center text-sm text-gray-500 mb-1">
-                                    <span>서비스 관리</span>
-                                    <ChevronRight className="w-4 h-4 mx-1" />
-                                    <span className="text-gray-900 font-bold">Text-to-SQL Pilot v1.0</span>
+                                    <img src="/logo.png" alt="Logo" className="h-6 w-auto" />
                                 </nav>
                                 <div className="flex items-center gap-3 mt-2">
                                     <h1 className="text-2xl font-bold text-gray-900 tracking-tight">시범 서비스 결과 리포트</h1>
