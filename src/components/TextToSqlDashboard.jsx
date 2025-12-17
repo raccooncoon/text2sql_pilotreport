@@ -487,6 +487,18 @@ export default function TextToSqlDashboard() {
 
 
 
+    // [New] Initial Loading Rendering
+    if (isRefreshing && logs.length === 0) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-gray-50">
+                <div className="flex flex-col items-center gap-3">
+                    <RefreshCw className="w-10 h-10 text-indigo-600 animate-spin" />
+                    <p className="text-gray-500 font-medium animate-pulse">데이터를 불러오는 중입니다...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
 
