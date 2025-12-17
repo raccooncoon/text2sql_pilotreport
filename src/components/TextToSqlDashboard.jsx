@@ -163,34 +163,127 @@ export default function TextToSqlDashboard() {
         const reader = new FileReader();
         reader.onload = (evt) => {
             const text = evt.target.result;
-            const lines = text.split('\n');
-            // Headers: id,user,chat,query,model,stage,status,feedback,date,time,retryCount
-            // We assume the first line is header.
-            const headers = lines[0].split(',').map(h => h.trim());
+
+            // Robust CSV Parser approach
+            const parseCSV = (str) => {
+                const arr = [];
+                let quote = false;  // 'true' means we're inside a quoted field
+                let col = 0;
+                let row = 0;
+
+                // Initialize first row and col
+                arr[0] = [];
+                arr[0][0] = "";
+
+                for (let c = 0; c < str.length; c++) {
+                    let cc = str[c];      // Current character
+                    let nc = str[c + 1];    // Next character
+
+                    arr[row] = arr[row] || [];
+                    arr[row][col] = arr[row][col] || "";
+
+                    if (cc == '"' && quote && nc == '"') {
+                        // Double quote inside quoted field -> escape it (add one quote)
+                        arr[row][col] += cc;
+                        ++c; // Skip next quote
+                        continue;
+                    }
+
+                    if (cc == '"') {
+                        quote = !quote;
+                        continue;
+                    }
+
+                    if (cc == ',' && !quote) {
+                        ++col;
+                        continue;
+                    }
+
+                    if (cc == '\r' && nc == '\n' && !quote) {
+                        ++row;
+                        col = 0;
+                        ++c; // Skip newline
+                        continue;
+                    }
+
+                    if (cc == '\n' && !quote) {
+                        ++row;
+                        col = 0;
+                        continue;
+                    }
+                    if (cc == '\r' && !quote) {
+                        ++row;
+                        col = 0;
+                        continue;
+                    }
+
+                    arr[row][col] += cc;
+                }
+                return arr;
+            };
+
+            const parsedRows = parseCSV(text);
+            if (parsedRows.length === 0) return;
+
+            // Handle Headers & Normalization
+            const rawHeaders = parsedRows[0].map(h => h.trim());
+
+            // Schema Mapping (Normalize case-insensitive to expected keys)
+            const schemaMap = {
+                'id': 'id',
+                'user': 'user',
+                'chat': 'chat',
+                'query': 'query',
+                'model': 'model',
+                'stage': 'stage',
+                'status': 'status',
+                'feedbackscore': 'feedbackScore',
+                'feedback': 'feedbackScore', // Alias old feedback
+                'date': 'date',
+                'time': 'time',
+                'retrycount': 'retryCount',
+                'feedbackcomment': 'feedbackComment'
+            };
+
+            const headers = rawHeaders.map(h => schemaMap[h.toLowerCase()] || h);
 
             const newLogs = [];
-            for (let i = 1; i < lines.length; i++) {
-                if (!lines[i].trim()) continue;
-                const values = lines[i].split(',').map(v => v.trim());
-                if (values.length !== headers.length) continue; // Skip malformed lines
+            for (let i = 1; i < parsedRows.length; i++) {
+                const values = parsedRows[i];
+                if (values.length < headers.length) continue; // Skip empty/malformed
 
                 const entry = {};
                 headers.forEach((h, index) => {
                     let val = values[index];
-                    // Type conversion if needed
-                    if (h === 'feedbackScore') val = val === 'null' || val === '' ? null : Number(val);
+                    if (val) val = val.trim();
+
+                    // Type conversion
+                    if (h === 'feedbackScore') val = (val === 'null' || val === '') ? null : Number(val);
                     if (h === 'retryCount') val = Number(val);
+
                     entry[h] = val;
                 });
-                newLogs.push(entry);
+                // Basic validation: must have id or date
+                if (entry.id || entry.date) {
+                    newLogs.push(entry);
+                }
             }
+
+            // Deduplication? For now just replace.
             setLogs(newLogs);
             setDisplayCount(10);
-            // Auto date range adjust?
-            // Optional: Find min/max date in new logs and set dateRange
+
+            // Auto date range adjust logic
             if (newLogs.length > 0) {
-                const dates = newLogs.map(l => l.date).sort();
-                setDateRange({ start: dates[0], end: dates[dates.length - 1] });
+                // Filter out invalid dates before sorting
+                const validDates = newLogs
+                    .map(l => l.date)
+                    .filter(d => d && /^\d{4}-\d{2}-\d{2}$/.test(d))
+                    .sort();
+
+                if (validDates.length > 0) {
+                    setDateRange({ start: validDates[0], end: validDates[validDates.length - 1] });
+                }
             }
         };
         reader.readAsText(file);
@@ -661,7 +754,7 @@ export default function TextToSqlDashboard() {
                                     {visibleLogs.length > 0 ? (
                                         <>
                                             {visibleLogs.map((log) => (
-                                                <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
+                                                <tr key={log.id} className="hover:bg-gray-50/50 transition-colors align-top">
                                                     <td className="px-5 py-3 text-gray-500 text-xs font-mono">{log.date.replace(/-/g, '. ')}</td>
                                                     <td className="px-5 py-3 text-gray-400 text-xs font-mono">{log.time}</td>
                                                     <td className="px-5 py-3">
