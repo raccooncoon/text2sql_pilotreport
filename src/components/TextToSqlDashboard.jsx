@@ -236,9 +236,9 @@ export default function TextToSqlDashboard() {
         const rect = e.target.getBoundingClientRect();
         setTooltip({
             visible: true,
-            x: rect.left + window.scrollX, // Just rect.left for fixed
-            y: rect.bottom + window.scrollY, // Just rect.bottom for fixed
-            rect: rect, // Store rect to compute precise fixed position
+            x: rect.left,
+            y: rect.bottom,
+            rect: rect,
             content: content
         });
     };
