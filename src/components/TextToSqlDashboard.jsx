@@ -51,8 +51,9 @@ const StatusBadge = ({ status }) => {
         ERROR: 'bg-red-50 text-red-700 border-red-200',
         BLOCKED: 'bg-orange-50 text-orange-700 border-orange-200',
         PENDING: 'bg-gray-50 text-gray-700 border-gray-200',
+        ENDED: 'bg-gray-100 text-gray-500 border-gray-200',
     };
-    const labelMap = { SUCCESS: '성공', RUNNING: '운영 중', FAIL: '실패', ERROR: '에러', BLOCKED: '차단됨', PENDING: '대기 중' };
+    const labelMap = { SUCCESS: '성공', RUNNING: '운영 중', FAIL: '실패', ERROR: '에러', BLOCKED: '차단됨', PENDING: '대기 중', ENDED: '운영 종료' };
 
     return (
         <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${styles[status] || 'bg-gray-100 text-gray-600'}`}>
@@ -536,7 +537,7 @@ export default function TextToSqlDashboard() {
                                 <div className="flex flex-col gap-2 mt-2">
                                     <div className="flex items-center gap-3">
                                         <h1 className="text-2xl font-bold text-gray-900 tracking-tight">시범 서비스 결과 리포트</h1>
-                                        <StatusBadge status="RUNNING" />
+                                        <StatusBadge status={new Date() >= new Date('2025-12-25') ? 'ENDED' : 'RUNNING'} />
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Database className="w-4 h-4 text-gray-400" />
