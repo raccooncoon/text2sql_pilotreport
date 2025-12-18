@@ -35,6 +35,12 @@ const STAGE_MAPPING = {
     5: '5. 결과 요약'
 };
 
+// [New] DB Views Definition
+const DB_VIEWS = [
+    { label: '기본 뷰 (Default)', value: 'k_water_t2sql_view' },
+    { label: '개발 뷰 (Dev)', value: 'k_water_t2sql_dev_view' }
+];
+
 // --- Reusable UI Components ---
 
 const StatusBadge = ({ status }) => {
@@ -71,7 +77,7 @@ const StarRating = ({ rating }) => {
     );
 };
 
-const MetricCard = ({ title, value, unit, subtext, trend, icon, breakdown }) => {
+const MetricCard = ({ title, value, unit, subtext, trend, icon, breakdown, ...props }) => {
     const Icon = iconMap[icon] || HelpCircle;
     const [isExpanded, setIsExpanded] = useState(false);
 
@@ -80,7 +86,10 @@ const MetricCard = ({ title, value, unit, subtext, trend, icon, breakdown }) => 
         : breakdown;
 
     return (
-        <div className="bg-white p-5 rounded-lg border border-gray-200 hover:border-indigo-200 transition-all shadow-sm">
+        <div
+            className="bg-white p-5 rounded-lg border border-gray-200 hover:border-indigo-200 transition-all shadow-sm"
+            {...props}
+        >
             <div className="flex justify-between items-start mb-2">
                 <h3 className="text-gray-500 text-sm font-medium tracking-tight">{title}</h3>
                 <div className={`p-2 rounded-lg ${trend === 'up' ? 'bg-green-50' : trend === 'down' ? 'bg-red-50' : 'bg-gray-50'}`}>
@@ -160,6 +169,9 @@ export default function TextToSqlDashboard() {
     // [New] Refresh Loading State
     const [isRefreshing, setIsRefreshing] = useState(false);
 
+    // [New] Selected Table State
+    const [selectedTable, setSelectedTable] = useState(DB_VIEWS[0].value);
+
     // [New] Data Fetching Function with Pagination
     const fetchLogs = async () => {
         setIsRefreshing(true);
@@ -174,7 +186,7 @@ export default function TextToSqlDashboard() {
                 const to = from + pageSize - 1;
 
                 const { data, error } = await supabase
-                    .from(import.meta.env.VITE_SUPABASE_TABLE_NAME)
+                    .from(selectedTable)
                     .select('*')
                     .range(from, to);
 
@@ -204,18 +216,6 @@ export default function TextToSqlDashboard() {
                 }));
 
                 setLogs(normalizedData);
-
-                // Auto date range adjust logic - DISABLED to keep default pilot period
-                /*
-                const validDates = normalizedData
-                    .map(l => l.date)
-                    .filter(d => d && /^\d{4}-\d{2}-\d{2}$/.test(d))
-                    .sort();
-
-                if (validDates.length > 0) {
-                    setDateRange({ start: validDates[0], end: validDates[validDates.length - 1] });
-                }
-                */
             }
         } catch (error) {
             console.error('Error fetching logs:', error);
@@ -227,7 +227,7 @@ export default function TextToSqlDashboard() {
 
     useEffect(() => {
         fetchLogs();
-    }, []);
+    }, [selectedTable]);
 
     // [New] Tooltip State
     const [tooltip, setTooltip] = useState({ visible: false, x: 0, y: 0, content: '' });
@@ -270,13 +270,6 @@ export default function TextToSqlDashboard() {
         setDateRange({ start: '2025-12-17', end: '2025-12-24' });
         setDisplayCount(10);
     };
-
-
-
-
-
-
-    // const { RECENT_LOGS } = mockData; // Removed and replaced by state
 
 
     // [Logic] Dynamic Data Calculation
@@ -329,8 +322,41 @@ export default function TextToSqlDashboard() {
             ? (ratedLogs.reduce((sum, l) => sum + l.feedbackScore, 0) / ratedLogs.length).toFixed(1)
             : '0.0';
 
+        // Active Users Breakdown
+        const userCounts = rangeLogs.reduce((acc, log) => {
+            acc[log.user] = (acc[log.user] || 0) + 1;
+            return acc;
+        }, {});
+        // Sort by count desc
+        const sortedUsers = Object.entries(userCounts)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 15); // Top 15
+
+        const userTooltip = (
+            <div className="flex flex-col gap-1 min-w-[200px]">
+                <div className="font-bold border-b border-gray-600 pb-2 mb-1 flex justify-between">
+                    <span>사용자 목록 (Top 15)</span>
+                    <span className="text-gray-400">총 {uniqueUsers}명</span>
+                </div>
+                {sortedUsers.map(([user, count], i) => (
+                    <div key={i} className="flex justify-between items-center text-xs">
+                        <span className="font-medium text-gray-200">{user}</span>
+                        <span className="text-gray-400">{count}회</span>
+                    </div>
+                ))}
+            </div>
+        );
+
         return [
-            { title: "활성 사용자", value: uniqueUsers.toLocaleString(), unit: "명", subtext: "기간 내 활동 사용자", trend: "neutral", icon: "User" },
+            {
+                title: "활성 사용자",
+                value: uniqueUsers.toLocaleString(),
+                unit: "명",
+                subtext: "기간 내 활동 사용자",
+                trend: "neutral",
+                icon: "User",
+                tooltipContent: userTooltip
+            },
             { title: "활성 세션", value: uniqueSessions.toLocaleString(), unit: "건", subtext: "기간 내 대화 세션", trend: "neutral", icon: "MessageSquare" },
             { title: "총 처리 질문 수", value: totalRequests.toLocaleString(), unit: "건", subtext: "기간 내 총 트래픽", trend: "neutral", icon: "HelpCircle" },
             { title: "모델별 사용 비율", breakdown: modelBreakdown, icon: "Cpu" },
@@ -375,7 +401,6 @@ export default function TextToSqlDashboard() {
     }, [rangeLogs, dateRange]);
 
     // 3. Pipeline Funnel Calculation
-    // Logic: Stage 5 implies passed 1,2,3,4. Stage 4 implies 1,2,3. etc.
     const PIPELINE_FUNNEL_DATA = useMemo(() => {
         const stages = [
             "1. 모델 상태 확인 (진입)",
@@ -394,10 +419,6 @@ export default function TextToSqlDashboard() {
         const counts = [0, 0, 0, 0, 0];
         rangeLogs.forEach(log => {
             const idx = getStageIndex(log.stage);
-            // If log is at stage idx, it passed all stages up to idx (inclusive) IF it is SUCCESS or if it failed AT that stage.
-            // Actually, Funnel usually shows how many ENTERED that stage.
-            // If log is at Stage 3 (Failed), it entered 1, 2, 3.
-            // If log is at Stage 5 (Success), it entered 1, 2, 3, 4, 5.
             if (idx >= 0) {
                 for (let i = 0; i <= idx; i++) {
                     counts[i]++;
@@ -512,9 +533,23 @@ export default function TextToSqlDashboard() {
                                 <nav className="flex items-center text-sm text-gray-500 mb-1">
                                     <img src={logo} alt="Logo" className="h-6 w-auto" />
                                 </nav>
-                                <div className="flex items-center gap-3 mt-2">
-                                    <h1 className="text-2xl font-bold text-gray-900 tracking-tight">시범 서비스 결과 리포트</h1>
-                                    <StatusBadge status="RUNNING" />
+                                <div className="flex flex-col gap-2 mt-2">
+                                    <div className="flex items-center gap-3">
+                                        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">시범 서비스 결과 리포트</h1>
+                                        <StatusBadge status="RUNNING" />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Database className="w-4 h-4 text-gray-400" />
+                                        <select
+                                            value={selectedTable}
+                                            onChange={(e) => setSelectedTable(e.target.value)}
+                                            className="text-sm font-medium text-gray-600 bg-transparent border-none outline-none focus:ring-0 cursor-pointer hover:text-indigo-600 transition-colors"
+                                        >
+                                            {DB_VIEWS.map(view => (
+                                                <option key={view.value} value={view.value}>{view.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                             <div className="flex flex-col items-end gap-2">
@@ -581,7 +616,16 @@ export default function TextToSqlDashboard() {
                     {/* 섹션 1: 주요 KPI (제공 데이터 기반) */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {KPI_METRICS.map((kpi, idx) => (
-                            <MetricCard key={idx} {...kpi} />
+                            <MetricCard
+                                key={idx}
+                                {...kpi}
+                                onMouseEnter={(e) => {
+                                    if (kpi.tooltipContent) {
+                                        handleMouseEnter(e, kpi.tooltipContent);
+                                    }
+                                }}
+                                onMouseLeave={handleMouseLeave}
+                            />
                         ))}
                     </div>
 
@@ -801,38 +845,30 @@ export default function TextToSqlDashboard() {
                                                     </td>
                                                 </tr>
                                             ))}
-                                            {/* 인피니티 스크롤 트리거 요소 */}
-                                            {visibleLogs.length < filteredLogs.length && (
-                                                <tr ref={observerTarget}>
-                                                    <td colSpan="7" className="py-4 text-center text-xs text-gray-400">
-                                                        Loading more...
-                                                    </td>
-                                                </tr>
-                                            )}
                                         </>
                                     ) : (
                                         <tr>
-                                            <td colSpan="8" className="px-5 py-8 text-center text-gray-500 text-xs">
-                                                선택한 기간 또는 평점 조건에 해당하는 로그가 없습니다.
+                                            <td colSpan="9" className="px-6 py-10 text-center text-gray-400 bg-white">
+                                                데이터가 없습니다.
                                             </td>
                                         </tr>
                                     )}
+                                    {/* Infinite Scroll Trigger */}
+                                    <tr ref={observerTarget} style={{ height: '20px', background: 'transparent' }} />
                                 </tbody>
                             </table>
                         </div>
                     </div>
-
-
-
                 </div>
             </main>
-            {/* Global Tooltip Portal (Rendered as fixed element) */}
+            {/* Tooltip */}
             {tooltip.visible && (
                 <div
-                    className="fixed z-50 bg-gray-900 text-white text-xs rounded px-3 py-2 shadow-xl max-w-sm whitespace-normal break-words pointer-events-none"
+                    className="fixed z-50 bg-gray-900 text-white text-xs rounded px-2 py-1 shadow-lg pointer-events-none max-w-sm break-words leading-tight"
                     style={{
-                        top: tooltip.rect.bottom + 5,
-                        left: Math.max(10, Math.min(window.innerWidth - 300, tooltip.rect.left)) // Prevent going off-screen right
+                        top: tooltip.y + 5,
+                        left: tooltip.x,
+                        transform: 'translateX(-10%)' // Slightly adjust
                     }}
                 >
                     {tooltip.content}
